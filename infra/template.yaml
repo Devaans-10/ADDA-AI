@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: NexusAI first milestone API. Static frontend deploys separately to Amplify.
+Parameters:
+  FrontendOrigin:
+    Type: String
+    AllowedPattern: 'https://[^/]+|http://localhost:3000'
+    Description: Exact frontend origin without trailing slash.
+  Provider:
+    Type: String
+    Default: demo
+    AllowedValues: [demo, bedrock]
+  BedrockModelId:
+    Type: String
+    Default: ''
+    Description: Account-accessible Converse model or inference profile ID.
+  DemoAccessToken:
+    Type: String
+    NoEcho: true
+    MinLength: 24
+    Description: Shared demo gate entered by judges in UI. Never put in frontend build variables.
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 5
+        ThrottlingRateLimit: 2
+  Api:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../services/api/
+      Handler: app.main.handler
+      Runtime: python3.13
+      MemorySize: 512
+      Timeout: 28
+      ReservedConcurrentExecutions: 3
+      Environment:
+        Variables:
+          NEXUS_PROVIDER: !Ref Provider
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          ALLOWED_ORIGINS: !Ref FrontendOrigin
+          DEMO_ACCESS_TOKEN: !Ref DemoAccessToken
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub 'arn:${AWS::Partition}:bedrock:*::foundation-model/*'
+                - !Sub 'arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/*'
+                - !Sub 'arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:application-inference-profile/*'
+      Events:
+        Root:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: ANY
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+Outputs:
+  ApiUrl:
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+  DocumentsBucketName:
+    Description: Reserved for the RAG milestone; not used by the current API.
+    Value: !Ref DocumentsBucket
