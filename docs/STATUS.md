@@ -30,3 +30,22 @@ the CRT dependency required by the SDK's browser-login credential provider. Back
 suite now has 24 passing tests; dependency consistency check passed. Live inference
 is still unverified. AWS CLI installation was started through the official winget
 package and is awaiting completion of the Windows installer prompt.
+
+## Cursor audit re-verification (19 Sep 2026, ~17:50 IST)
+
+Independent inspection of this tree (not the disposable handoff-test repo).
+HEAD `1ff16f1` on `main`, working tree clean, no git remote.
+
+Verified now:
+- `pytest -q` in `services/api`: 24 passed, 1 Starlette/AnyIO deprecation warning.
+- `npm run typecheck` and `npm run build` in `apps/web`: passed (Next.js 16.3.5 static export).
+- Live `GET http://127.0.0.1:8000/health`: `coding: true`, document/search/research `false`, `provider: demo`.
+- Live `POST /api/chat` coding prompt: 200, fixture answer, `agent: coding`, activity Router + Coding agent.
+- Live PDF/search/research keyword prompts: HTTP 501 `agent_not_implemented`.
+- Browser `http://localhost:3000`: API connected, Run task shows fixture, Coding agent label, activity steps.
+- AWS CLI present: `aws-cli/2.36.49`. Docker and AWS SAM CLIs are not installed.
+- `apps/web/.env.local` is missing; frontend used the documented `http://localhost:8000` default.
+
+Not verified: live Bedrock inference, Docker compose, SAM/Amplify deploy, GitHub CI.
+Observed in Next.js dev: hydration error overlay (`app/page.tsx` Workspace, red "1 Issue" badge).
+The chat path still completed. Production `out/` was not re-served in a browser.

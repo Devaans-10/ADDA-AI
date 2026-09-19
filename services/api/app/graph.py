@@ -4,6 +4,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from app.agents.search import SearchProvider
 from app.providers import CodingProvider, ProviderError
 
 
@@ -13,6 +14,7 @@ class AgentState(TypedDict):
     agent: str
     answer: str
     activity: list[dict]
+    citations: list[dict]
 
 
 def select_agent(message: str, requested_agent: str) -> tuple[str, str]:
@@ -22,7 +24,7 @@ def select_agent(message: str, requested_agent: str) -> tuple[str, str]:
     routes = [
         ('document', r'\b(pdf|document|uploaded|attachment)\b'),
         ('research', r'\b(research|compare|investigate)\b'),
-        ('search', r'\b(search|latest|news|today|web)\b'),
+        ('search', r'\b(search|latest|news|today|web|current|recent)\b'),
         ('coding', r'\b(code|coding|python|javascript|typescript|react|function|debug|bug|sql)\b'),
     ]
     for agent, pattern in routes:
@@ -31,7 +33,17 @@ def select_agent(message: str, requested_agent: str) -> tuple[str, str]:
     return 'coding', 'First milestone fallback to Coding; ask a programming question.'
 
 
+def _next_node(state: AgentState) -> str:
+    if state['agent'] == 'coding':
+        return 'coding'
+    if state['agent'] == 'search':
+        return 'search'
+    return 'unavailable'
+
+
 def build_graph(provider: CodingProvider):
+    search_provider = SearchProvider(provider.settings)
+
     def route(state: AgentState):
         started = perf_counter()
         agent, reason = select_agent(state['message'], state['requested_agent'])
@@ -49,6 +61,19 @@ def build_graph(provider: CodingProvider):
             'duration_ms': round((perf_counter() - started) * 1000),
         }]}
 
+    def search(state: AgentState):
+        started = perf_counter()
+        result = search_provider.search(state['message'])
+        return {
+            'answer': result['answer'],
+            'citations': result['citations'],
+            'activity': state['activity'] + [{
+                'step': 'Search agent', 'status': 'completed',
+                'detail': f"Tavily returned {result['source_count']} source(s).",
+                'duration_ms': round((perf_counter() - started) * 1000),
+            }],
+        }
+
     def unavailable(state: AgentState):
         raise ProviderError(
             f"The {state['agent']} agent is planned for the next milestone. Try a Coding task.",
@@ -58,9 +83,11 @@ def build_graph(provider: CodingProvider):
     graph = StateGraph(AgentState)
     graph.add_node('route', route)
     graph.add_node('coding', coding)
+    graph.add_node('search', search)
     graph.add_node('unavailable', unavailable)
     graph.add_edge(START, 'route')
-    graph.add_conditional_edges('route', lambda s: 'coding' if s['agent'] == 'coding' else 'unavailable')
+    graph.add_conditional_edges('route', _next_node)
     graph.add_edge('coding', END)
+    graph.add_edge('search', END)
     graph.add_edge('unavailable', END)
     return graph.compile()

@@ -13,7 +13,12 @@ class Settings(BaseSettings):
     bedrock_model_id: str = ''
     allowed_origins: str = 'http://localhost:3000'
     demo_access_token: str = ''
+    tavily_api_key: str = ''
 
     @property
     def origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(',') if origin.strip()]
+
+    @property
+    def search_enabled(self) -> bool:
+        return bool(self.tavily_api_key.strip())

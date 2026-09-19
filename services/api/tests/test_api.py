@@ -29,11 +29,18 @@ def test_rejects_invalid_messages(client, message):
     assert client.post('/api/chat', json={'message': message}).status_code == 422
 
 
-@pytest.mark.parametrize('message', ['Summarize this PDF', 'Find latest news', 'Research battery storage'])
+@pytest.mark.parametrize('message', ['Summarize this PDF', 'Research battery storage'])
 def test_future_agents_are_not_fake_success(client, message):
     result = client.post('/api/chat', json={'message': message})
     assert result.status_code == 501
     assert result.json()['detail']['code'] == 'agent_not_implemented'
+
+
+def test_search_without_key_is_not_fake_success(client):
+    result = client.post('/api/chat', json={'message': 'Find latest news'})
+    assert result.status_code == 503
+    assert result.json()['detail']['code'] == 'search_not_configured'
+    assert 'answer' not in result.json()
 
 
 def test_explicit_coding_overrides_keywords(client):
@@ -121,3 +128,4 @@ def test_health_does_not_invoke_model(monkeypatch):
     assert result.status_code == 200
     assert result.json()['provider'] == 'bedrock'
     assert result.json()['capabilities']['document'] is False
+    assert result.json()['capabilities']['search'] is False

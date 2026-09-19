@@ -38,20 +38,22 @@ def create_app(settings: Settings | None = None, provider: CodingProvider | None
     @app.get('/health')
     def health():
         return {'status': 'ok', 'provider': settings.nexus_provider,
-                'capabilities': {'coding': True, 'document': False, 'search': False, 'research': False}}
+                'capabilities': {'coding': True, 'document': False,
+                                 'search': settings.search_enabled, 'research': False}}
 
     @app.post('/api/chat', response_model=ChatResponse, dependencies=[Depends(authorize)])
     def chat(body: ChatRequest):
         request_id = str(uuid4())
         try:
             state = graph.invoke({'message': body.message, 'requested_agent': body.agent,
-                                  'agent': '', 'answer': '', 'activity': []})
+                                  'agent': '', 'answer': '', 'activity': [], 'citations': []})
         except ProviderError as exc:
             raise HTTPException(exc.status, detail={
                 'code': exc.code, 'message': exc.message, 'request_id': request_id,
             }) from exc
         return ChatResponse(request_id=request_id, agent=state['agent'], answer=state['answer'],
-                            provider=settings.nexus_provider, activity=state['activity'])
+                            provider=settings.nexus_provider, activity=state['activity'],
+                            citations=state.get('citations') or [])
 
     return app
 

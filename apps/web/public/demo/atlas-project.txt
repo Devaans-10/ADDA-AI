@@ -1,0 +1,23 @@
+ATLAS COMMUNITY LIBRARY — PROJECT BRIEF
+Fictional sample document for the NexusAI hackathon demonstration.
+
+Project overview
+The Atlas community library will run a six-week digital skills programme for 60 adult learners. The programme combines practical workshops with open practice sessions. Project lead Mira Patel coordinates the volunteer team.
+
+Schedule and delivery
+The pilot begins on October 5, 2026 and ends on November 15, 2026. Workshops take place on Tuesday and Thursday evenings. The final demonstration is scheduled for November 14. Ten laptops are available, so learners work in pairs in groups of twenty.
+
+Budget
+The approved budget is INR 180,000. Equipment receives INR 90,000, teaching materials INR 30,000, internet and software INR 24,000, accessibility support INR 18,000, and contingency INR 18,000. Funding beyond the pilot has not been approved.
+
+Risks and mitigation
+Unreliable internet is the largest delivery risk. The team will download workshop materials in advance and maintain an offline copy on every laptop. Volunteer availability is another risk; two reserve facilitators will be trained before the pilot starts. The venue is accessible but evening transport may limit attendance, so the team is surveying participants before finalising the timetable.
+
+Success criteria
+Success means at least 48 of the 60 learners complete four workshops and independently demonstrate email, online forms, and basic spreadsheet skills. Attendance alone is not considered proof of learning. Feedback is collected after each workshop and reviewed weekly.
+
+Data handling
+Only names, contact preferences, and attendance are collected. The team will delete participant contact details within 90 days after the pilot. No financial account information or identity documents are collected.
+
+Unresolved questions
+The brief does not specify a catering supplier, long-term expansion budget, or participant employment outcomes. These should not be inferred from this document.
