@@ -1,6 +1,6 @@
 import boto3
 from botocore.config import Config
-from botocore.exceptions import BotoCoreError, ClientError, ReadTimeoutError
+from botocore.exceptions import BotoCoreError, ClientError, ReadTimeoutError, NoCredentialsError, PartialCredentialsError
 
 from app.config import Settings
 
@@ -9,6 +9,25 @@ class ProviderError(Exception):
     def __init__(self, message: str, code: str = 'provider_unavailable', status: int = 502):
         self.message, self.code, self.status = message, code, status
         super().__init__(message)
+
+
+def aws_error(exc: Exception) -> ProviderError:
+    """Map AWS failures to safe, actionable messages without exposing SDK details."""
+    if isinstance(exc, (NoCredentialsError, PartialCredentialsError)):
+        return ProviderError('AWS credentials are missing or incomplete. Sign in locally and restart the API.', 'aws_credentials_missing', 503)
+    if isinstance(exc, ReadTimeoutError):
+        return ProviderError('Bedrock timed out. Try a shorter task.', 'provider_timeout', 504)
+    if isinstance(exc, ClientError):
+        code = exc.response.get('Error', {}).get('Code', '')
+        if code in ('ExpiredToken', 'ExpiredTokenException', 'InvalidClientTokenId', 'UnrecognizedClientException'):
+            return ProviderError('Your AWS session has expired or is invalid. Sign in again.', 'aws_session_invalid', 503)
+        if code in ('AccessDenied', 'AccessDeniedException', 'UnauthorizedException'):
+            return ProviderError('AWS denied this request. Check the signed-in role, Bedrock model access, and region.', 'aws_access_denied', 502)
+        if code in ('ThrottlingException', 'TooManyRequestsException', 'ServiceQuotaExceededException'):
+            return ProviderError('The AWS request limit was reached. Wait briefly and try again.', 'provider_rate_limited', 503)
+        if code in ('ValidationException', 'ResourceNotFoundException'):
+            return ProviderError('AWS could not use this model configuration. Check the model or inference profile ID, region, and supported settings.', 'model_configuration_error', 502)
+    return ProviderError('AWS request failed. Check local sign-in, network connectivity, region, and model access.')
 
 
 CODING_SYSTEM = '''You are NexusAI's Coding specialist. Answer the user's programming task
@@ -57,8 +76,6 @@ class CodingProvider:
             if not answer:
                 raise ProviderError('The model returned no text. Check model settings and retry.')
             return answer
-        except ReadTimeoutError as exc:
-            raise ProviderError('Bedrock timed out. Try a shorter task.', 'provider_timeout', 504) from exc
         except (BotoCoreError, ClientError) as exc:
             # Never send SDK exception strings, credentials, or infrastructure details to the browser.
-            raise ProviderError('Bedrock request failed. Check AWS credentials, region, model access, and IAM permissions.') from exc
+            raise aws_error(exc) from exc

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
         env_file=Path(__file__).resolve().parents[1] / '.env', extra='ignore'
     )
     nexus_provider: Literal['demo', 'bedrock'] = 'demo'
-    aws_region: str = 'us-east-1'
+    aws_region: str = 'ap-south-1'
     bedrock_model_id: str = ''
     allowed_origins: str = 'http://localhost:3000'
     demo_access_token: str = ''

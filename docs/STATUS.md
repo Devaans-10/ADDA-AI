@@ -21,3 +21,12 @@ were created. The repository has no remote configured.
 
 PDF/RAG, Search, Research, and live activity streaming are planned rather than implemented.
 The next gate is local AWS sign-in and two successful distinct Bedrock Coding prompts.
+
+## Bedrock setup follow-up
+
+User selected Mumbai (`ap-south-1`); backend defaults and local configuration now use
+that region. Added a safe local readiness command, specific AWS error messages, and
+the CRT dependency required by the SDK's browser-login credential provider. Backend
+suite now has 24 passing tests; dependency consistency check passed. Live inference
+is still unverified. AWS CLI installation was started through the official winget
+package and is awaiting completion of the Windows installer prompt.

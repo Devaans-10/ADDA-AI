@@ -70,6 +70,9 @@ On macOS/Linux use `.venv/bin/python` in place of `.venv\Scripts\python.exe`,
 
 ## Enable Bedrock
 
+Follow [local AWS sign-in and verification](docs/AWS_SETUP.md). The readiness checker
+can validate the session without model calls, then test two prompts with `--invoke`.
+
 Configure AWS credentials using your team's normal AWS profile/SSO flow outside the
 repository. Set `NEXUS_PROVIDER=bedrock`, `AWS_REGION`, and `BEDROCK_MODEL_ID` in
 `services/api/.env`; restart the API. Use a Converse-compatible model or inference
