@@ -13,14 +13,15 @@ from app.graph import build_graph
 from app.providers import CodingProvider, ProviderError
 from app.schemas import ChatRequest, ChatResponse
 from app.agents.document import DocumentStore, MAX_BYTES
+from app.agents.s3_document import S3DocumentStore
 from app.body_limit import BodyLimit
 
 
 def create_app(settings: Settings | None = None, provider: CodingProvider | None = None) -> FastAPI:
     settings = settings or Settings()
-    documents = DocumentStore()
+    documents = S3DocumentStore(settings.document_bucket) if settings.document_bucket else DocumentStore()
     graph = build_graph(provider or CodingProvider(settings), documents)
-    app = FastAPI(title='NexusAI API', version='0.1.0')
+    app = FastAPI(title='ADDA AI API', version='0.1.0')
     app.add_middleware(BodyLimit)
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.origins,

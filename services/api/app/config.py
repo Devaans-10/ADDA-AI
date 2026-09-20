@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     demo_access_token: str = ''
     tavily_api_key: str = ''
     document_enabled: bool = True
+    document_bucket: str = ''
 
     @property
     def origins(self) -> list[str]:
