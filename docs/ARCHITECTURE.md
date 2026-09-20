@@ -1,49 +1,47 @@
-# NexusAI MVP architecture
+# ADDA AI architecture
 
-NexusAI is a workspace that routes a request to a specialist and explains the actions taken. The hackathon target is four visibly different capabilities, with a working Coding route as the first integration milestone.
-
-## First milestone
+## NOW — implemented local MVP
 
 ```mermaid
-flowchart LR
-  Browser[Next.js / React static frontend] -->|POST /api/chat| API[FastAPI]
+flowchart TD
+  UI[Next.js static frontend] --> API[FastAPI]
   API --> Router[LangGraph deterministic router]
-  Router --> Coding[Coding node]
-  Coding --> Provider[Demo fixture or Bedrock Converse]
-  Provider --> Response[Answer + provider + activity + citations]
-  Response --> Browser
+  Router --> Coding[Coding: fixture or Bedrock]
+  Router --> Document[Document: keyword evidence]
+  Router --> Search[Search: Tavily snippets]
+  Router --> Plan[Research plan]
+  Plan --> Collect[Two retrieval checks]
+  Collect --> Brief[Cited extractive brief]
+  Collect --> Sources[Attached document or Tavily]
 ```
 
-Two runtime services initially: the web frontend and Python API. Agents are graph nodes inside the API, not separately deployed microservices. Container packaging demonstrates reproducible service boundaries without multiplying deployments.
+The frontend and API are separate runtimes. Specialist nodes share the API process. Auto routing uses explicit keyword rules; users can override the selection. It is not an LLM classifier. Research is a real multi-step LangGraph path, with deterministic planning and excerpt assembly rather than model synthesis.
 
-- `apps/web`: Next.js static export, composer, agent selector, answer and activity display.
-- `services/api`: request validation, routing graph, provider adapter and specialist nodes.
-- `infra`: AWS SAM template for API Gateway HTTP API and Lambda; Amplify hosts exported frontend assets.
-- `docs`: team assignments, integration contract and deployment steps.
+`POST /api/chat` accepts `message`, `agent` and optional `document_id`. Document requests also require `X-Document-Token`; a configured demo gate requires `X-Demo-Token`. Responses include request ID, selected agent, actual provider, answer, completed activity and citations. Read generated OpenAPI for exact schemas. Activity arrives after completion, not as a live stream or private model reasoning.
 
-The current contract is `POST /api/chat` with `message` and `agent` (`auto`, `coding`, `document`, `search`, `research`). Successful responses include `answer`, `provider`, `activity`, and `citations`; use the API's generated OpenAPI schema for exact fields. Auto routing is deterministic and has a Coding fallback. Document, Search and Research selections currently return HTTP 501 until implemented. They must never silently masquerade as working specialists.
+`POST /api/documents` ingests a multipart file. `POST /api/documents/demo` loads the supplied three-page fictional PDF. `DELETE /api/documents/{document_id}` requires the document token. Tokens are separate from IDs and uploads are isolated by possession of that secret; this is not a full user-account system.
 
-Demo mode is a labeled, fixed fixture for proving transport and UI behavior; it does not generate arbitrary code. Bedrock mode invokes a configured model through Converse. Health identifies configured mode, not credential validity or model availability. A successful real invocation is the readiness gate. Activity initially arrives with the completed response; live streaming is a later enhancement. Activity describes routing and tool actions, not private model reasoning.
-
-## Next milestones, after first-route verification
-
-| Agent | Actual work | Completion evidence |
+| Specialist | Source and processing | Honest output |
 | --- | --- | --- |
-| Coding | Generate/explain/debug code with Bedrock | Different prompts produce relevant answers; generated code is displayed, never executed |
-| Document / RAG | Extract PDF pages, chunk text, embed, retrieve, answer from evidence | Answer includes original filename, one-based page and supporting excerpt; unsupported question gets an explicit insufficient-evidence answer |
-| Search | Call Tavily with bounded results, synthesize with source URLs | Real result titles and URLs support the answer; provider failure is visible |
-| Research | Produce a short plan, run bounded Search calls, synthesize cited findings | Activity shows actual executed steps and citations resolve to retrieved sources |
+| Coding | Fixed offline fixture, or Bedrock Converse when configured | Clearly labeled sample or model response; code never executed |
+| Document | pypdf extraction, page-local chunks and weighted keyword matching | Up to three supporting excerpts, each at most 500 characters, with filename/page citations |
+| Search | Tavily, up to five result URLs/snippets | Retrieved evidence; full pages not independently verified |
+| Research | Two bounded retrieval checks against an attached document, otherwise Tavily | Deduplicated cited evidence brief; no inferred conclusion or AI synthesis |
 
-For RAG, start with text PDFs capped at 5 MB and 30 pages; reject encrypted, malformed and image-only files with useful messages. Use `pypdf` to preserve page numbers. Keep page boundaries while chunking. Store originals in private S3, embeddings in Qdrant Cloud, and source metadata with each vector. The backend applies a session/document filter to every retrieve/delete operation. A client-provided document identifier alone is not authorization. Use a server-issued session and prove that session B cannot retrieve session A's document. Qdrant supports payload-based partitioning; this isolation still depends on correct application filtering. [Qdrant documentation](https://qdrant.tech/documentation/tutorials/multiple-partitions/)
+Document limits: 5 MB upload, 30 PDF pages, 200,000 extracted characters, 300 chunks and 2 MB decompression/output limits for supported PDF stream paths. Reject encrypted, malformed and image-only PDFs. TXT is UTF-8 and treated as one page. Summary requests return representative page excerpts; unmatched queries abstain. Keyword matches do not establish that a passage answers every part of a question.
 
-Upload through a short-lived S3 signed upload flow, then ask the API to ingest the stored object. Apply upload size constraints and verify object size, content and ownership again before parsing. Use unique server-generated object keys. S3 signed URLs allow upload without exposing AWS credentials to the browser. [S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html)
+Documents stay in process memory, expire after one hour, and are capped at ten. Restarting loses uploads. The UI keeps task history and document attachment state in memory, not durable conversation storage. Run one API process for the document demo.
 
-Select and test a Bedrock embedding model separately from the chat model; configure vector dimensions to its actual output. Do not pretend the chat model produces embeddings. Avoid Lambda local disk as persistent storage.
+Health advertises configured capabilities and Coding provider; successful responses carry the actual provider. Neither the presence of a key nor a health response verifies a live service.
 
-Keep Research to at most two searches and one synthesis for the first version. API Gateway HTTP API has a 30-second maximum integration timeout. If measured execution cannot fit, add an asynchronous job endpoint and polling with durable status, or defer the expanded workflow. A longer Lambda timeout alone does not fix the HTTP API limit. [AWS quota documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-quotas.html)
+## NEXT — verify integrations and deploy an honest subset
 
-## Scope boundaries
+Verify two Bedrock requests with the named AWS profile, then verify Tavily if a key becomes available. Preserve the working no-key document path. SAM/Amplify configuration is prepared but not deployed or runtime-verified. Lambda explicitly disables documents because separate invocations cannot rely on a shared process store. Do not present the local document capability as a deployed Lambda capability.
 
-No fine-tuning, Kubernetes, Redis, arbitrary code execution, browser automation, elaborate account system, or agent-per-container architecture. No promise of autonomous deep research. Keep specialist instructions and tool boundaries explicit; retrieved text and web pages are evidence, not instructions. Never fabricate citations or mark a tool successful before it has run.
+API Gateway HTTP API has a 30-second integration limit; the prepared Lambda budget is 28 seconds. Research currently performs two sequential lookups, so measure its complete latency before enabling it publicly. [AWS HTTP API quotas](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-quotas.html)
 
-LangGraph supplies the stateful graph and routing primitives; the application owns the state schema and bounded execution policy. [LangGraph reference](https://reference.langchain.com/python/langgraph/overview)
+## LATER — shared storage and semantic RAG
+
+Add private S3 originals, bounded signed uploads, durable document metadata and ownership checks. Introduce a verified embedding model and vector store only after current deployment is stable. Qdrant/S3/embedding environment placeholders do not mean those integrations exist. Async jobs are a future option if ingestion or expanded Research exceeds the HTTP deadline.
+
+No fine-tuning, Kubernetes, Redis, agent-per-service deployment or code execution. Retrieved files/pages remain untrusted evidence. LangGraph provides graph execution; the application owns its state and limits. [LangGraph reference](https://reference.langchain.com/python/langgraph/overview)

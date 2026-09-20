@@ -1,48 +1,42 @@
-# Team plan: demo by September 20, 2026, 8 PM IST
+# Team plan — September 20, 2026
 
-The first deliverable is a verified browser → API → LangGraph → Coding → response path. Do not begin parallel feature integration until that path works. The final target is four specialists with real tools and a deployed demo; this scaffold does not claim that target is already complete.
+Aim for a stable morning/afternoon demo, preserving the final submission deadline of **20:00 IST today**. The initial Coding route is complete; document retrieval and attached-document Research now work locally. [PROJECT_STATUS.md](../PROJECT_STATUS.md) owns the live handoff and exact next action.
 
-## Four owners
+## NOW — protect the working demo
 
-| Owner | Files and responsibility | Acceptance gate |
+| Owner | Owned work | Acceptance |
 | --- | --- | --- |
-| Teammate 1 — interface | `apps/web/**`; composer, answer rendering, activity, upload and citation presentation | Browser completes a real request; loading/error/501 states are clear; source links are usable; no secret bundled |
-| Teammate 2 — orchestrator / integration lead | `services/api/app/**` shared API, graph, schemas and provider code, excluding specialist files assigned below; owns integration | Demo and Bedrock Coding work; input errors, unknown agents, provider failures and routing are tested; no accidental network calls in demo tests |
-| Teammate 3 — documents | New `services/api/app/agents/document.py`, document-specific modules and tests; coordinate route/schema changes with owner 2 | A text PDF yields correct page citations; unsupported question abstains; malformed/oversized files fail; separate sessions cannot cross-retrieve |
-| Teammate 4 — search / research | New `services/api/app/agents/search.py`, `research.py`, related tools/tests; owns cloud rollout with owner 2 reviewing | Search calls real API; Research reuses it and returns grounded citations; deadlines enforced; deployed smoke tests pass |
+| Teammate 1 — frontend | `apps/web/**` | Upload/sample flow, citation cards, code copy, responsive layout and clear error/provider states work in browser |
+| Teammate 2 — integration lead | Shared API/graph/schema/config/dependencies; final merge | Full backend suite and web checks pass after consolidation; original Cursor edits preserved |
+| Teammate 3 — documents | `services/api/app/agents/document.py` and document tests | Budget/page citation and abstention demo pass; token isolation and limits pass; process-local limitations disclosed |
+| Teammate 4 — services and demo | Search/Research modules/tests; cloud proposal and demo preparation | Attached-document Research passes; external readiness is labeled accurately; recording and pitch ready |
 
-Owner 2 alone merges changes to shared dependencies, graph wiring, schemas, root environment templates and infrastructure. Specialist owners submit precise dependency and schema requests. Teammate 4 prepares infrastructure changes in a separate branch and owner 2 integrates them. Each teammate uses one branch/worktree; do not let Cursor and Codex concurrently edit the same files.
+Only the integration lead merges shared graph, schema, dependency and infrastructure changes. Cursor is being paused while Codex consolidates the isolated MVP worktree; resume only with distinct file ownership. One branch/worktree per active owner. Never ask Cursor and Codex to edit the same files concurrently.
 
-Cursor handles each owner's bounded feature edits and local debugging. Codex coordinates the API contract, reviews diffs, integration tests and deployment troubleshooting. See `CURSOR_HANDOFF.md` for staged copyable prompts. Humans decide scope cuts and validate demo claims.
+1. Complete the combined regression run and update verification status.
+2. Consolidate `codex/hackathon-mvp` with the original repository without overwriting Cursor work or local environment settings.
+3. Run [DEMO.md](../DEMO.md) in the consolidated copy and keep a known-good revision.
 
-## Integration schedule (IST)
+## NEXT — time-box external readiness
 
-| Deadline | Deliverable / decision |
+- After the user's pending approval, make two small Bedrock requests using named profile `nexusai`. STS already passed; model inference has not.
+- If a Tavily key becomes available, test a real Search request and a bounded web Research request. Otherwise retain the visible key-needed state.
+- Decide whether to deploy the verified Coding/Search subset or first add shared document storage. The prepared Lambda template intentionally disables local documents. Do not describe that subset as the full local MVP.
+- Validate/build infrastructure and smoke-test any deployment before announcing a URL. Docker, SAM and hosting have not been verified.
+
+| Time (IST today) | Gate |
 | --- | --- |
-| Sep 19, 7 PM | First route verified locally; record known-good revision; check AWS identity, region and one Bedrock invocation |
-| Sep 19, 9 PM | Deploy the Coding slice to AWS; resolve IAM/CORS/build problems while scope is small |
-| Sep 20, 12 PM | Merge Document and Search independently with evidence tests; no combined all-at-once merge |
-| Sep 20, 2 PM | Merge bounded Research; freeze API contract and dependencies |
-| Sep 20, 4 PM | Feature freeze. Deploy final candidate; remove or explicitly label unfinished capabilities |
-| Sep 20, 6 PM | Deployment hard stop. Verify three demo scenarios, access token, citations and failure states from a second browser |
-| Sep 20, 7 PM | Record backup demo, save screenshots and prepare a short architecture explanation |
-| Sep 20, 8 PM | Submit working URL, repository and recording |
+| Morning/early afternoon | Stable local demo and consolidated repository |
+| By 14:00 | External-provider decision and API freeze; cut unavailable extras |
+| By 16:00 | Feature freeze; only demo blockers and deployment fixes |
+| By 18:00 | Deployment hard stop; keep a working local fallback |
+| By 19:00 | Recording, screenshots, pitch and submission materials ready |
+| 20:00 | Final submission |
 
-If starting later, compress feature work, not the final two-hour demo buffer. If Bedrock is blocked tonight, continue the explicitly labeled fixture path for integration and prioritize account/model access before adding UI polish. A fixture-only app is not a completed AI demo.
+If a gate has already passed, prioritize the working recording and final checks. Do not consume the final two-hour buffer adding features.
 
-## First-route gate
+## LATER — after the hackathon baseline
 
-1. Install dependencies and copy environment examples locally; no credentials in Git.
-2. Start API in demo mode and web frontend. Send a Coding prompt from the browser.
-3. Verify the network request succeeds and the answer, provider label and returned activity render.
-4. Verify explicit Document/Search/Research requests show the current unsupported status.
-5. Run backend tests and frontend production build.
-6. Switch backend to Bedrock using local AWS credentials; verify a real prompt, then a second materially different prompt. Do not infer readiness from health.
+Private S3 originals and shared metadata, semantic embeddings/vector retrieval, OCR, durable history and longer asynchronous Research. No fine-tuning, Kubernetes or Redis. Existing older Cursor prompts are planning material; actual code and PROJECT_STATUS take precedence over their future-feature assumptions.
 
-## Final demonstration
-
-- Coding: ask for a small function and a correction; show relevant generated code.
-- Document: upload the team's short PDF, ask a supported question, open the cited page; ask one unsupported question.
-- Search / Research: ask a time-sensitive question, show retrieved source links and actual activity; explain the bounds on research.
-
-Keep a known-good local build and recording. Present only tested functionality as complete. Track remaining tasks as `planned`, `implemented`, `verified locally`, or `verified deployed`; those are distinct states.
+Acceptance is evidence, not a checkbox: label each feature implemented, verified locally, externally unverified, or verified deployed. Do not claim four live AI agents, semantic RAG or AWS deployment from this local build.

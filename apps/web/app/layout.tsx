@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./auth.css";
 
 export const metadata: Metadata = {
-  title: "NexusAI · Agent workspace",
-  description: "One workspace for specialized AI agents, with a clear record of every task.",
+  title: "ADDA AI · Agent workspace",
+  description: "A multi-agent workspace that shows the route, the evidence, and the result.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -65,13 +65,17 @@ def test_search_returns_tavily_citations(monkeypatch):
     assert body['agent'] == 'search'
     assert [a['step'] for a in body['activity']] == ['Router', 'Search agent']
     assert body['citations'] == [
-        {'id': 's1', 'title': 'AI agent news', 'url': 'https://example.com/agents', 'page': None, 'document_id': None},
-        {'id': 's2', 'title': 'Also agents', 'url': 'https://example.org/ai', 'page': None, 'document_id': None},
+        {'id': 's1', 'title': 'AI agent news', 'url': 'https://example.com/agents', 'page': None, 'document_id': None, 'excerpt': 'New agent runtimes shipped.'},
+        {'id': 's2', 'title': 'Also agents', 'url': 'https://example.org/ai', 'page': None, 'document_id': None, 'excerpt': 'Orchestrators gained memory.'},
     ]
-    assert 'https://example.com/agents' in body['answer']
+    assert 'AI agent news' in body['answer']
+    assert 'Agent frameworks keep expanding tool use.' in body['answer']
+    assert body['provider'] == 'tavily'
     assert 'https://not-from-tavily.example' not in body['answer']
     assert 'test-search-key' not in result.text
     assert captured['json']['query'] == 'What are the latest developments in AI agents?'
+    assert captured['json']['include_answer'] is True
+    assert captured['json']['max_results'] == 5
     assert 'api_key' not in captured['json']
 
 
@@ -101,12 +105,14 @@ def test_search_drops_non_http_urls(monkeypatch):
 
 
 def test_empty_tavily_results_are_honest(monkeypatch):
-    client, _captured = _app(monkeypatch, {'results': []})
+    client, _captured = _app(monkeypatch, {'answer': 'Invented summary with no sources.', 'results': []})
     result = client.post('/api/chat', json={'message': 'latest news'})
     assert result.status_code == 200
     body = result.json()
     assert body['citations'] == []
     assert 'No web sources were returned' in body['answer']
+    assert 'Invented summary' not in body['answer']
+    assert 'no usable source URLs' in body['activity'][-1]['detail']
 
 
 def test_search_provider_failure_does_not_leak_key(monkeypatch):
@@ -125,7 +131,7 @@ def test_health_reports_search_when_configured():
     health = client.get('/health').json()
     assert health['capabilities']['search'] is True
     assert health['capabilities']['coding'] is True
-    assert health['capabilities']['document'] is False
+    assert health['capabilities']['document'] is True
 
 
 def test_coding_fixture_still_works_when_search_is_configured(monkeypatch):

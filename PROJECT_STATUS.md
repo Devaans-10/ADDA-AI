@@ -1,48 +1,57 @@
-# NexusAI — execution handoff
+# NexusAI handoff
 
 ## Current goal
-Stable, honest hackathon demo by Sep 20 morning/afternoon IST. Local execution only;
-PC sleep suspends work. Repo is the source of truth; never restart from scratch.
+Finish the professional frontend for the hackathon. User will handle deployment separately.
+
+## Authoritative working copy
+Use `outputs/nexusai-mvp`, branch `codex/hackathon-mvp`. The active frontend on
+localhost:3000 and API on 127.0.0.1:8000 run this copy. Original `outputs/nexusai`
+has older code but still supplies the Python venv and backend environment to the
+startup script. Do not overwrite either checkout or run simultaneous frontend edits.
 
 ## Current working state
-Root: this directory (`outputs/nexusai`). Branch `main`; baseline HEAD `1ff16f1`.
-First Coding fixture route implemented. Search adapter/UI arrived as uncommitted
-Cursor work; preserve it. No configured remote. Current owner: Codex coordinator;
-Cursor editing status requested before changing shared files.
+- Coding: working labelled fixture, real Bedrock inference unverified.
+- Documents: real PDF/TXT keyword retrieval, page citations, temporary token-protected uploads.
+- Research: plan, retrieve twice, assemble cited evidence; no model synthesis.
+- Search: Tavily key configured; current adapter requests a provider summary and sources.
+  Earlier Cursor notes report live Search success; this latest UI pass did not repeat paid calls.
+- AWS: named profile identity previously verified; no deployment or live Bedrock claim.
 
-## Completed / verified
-- FastAPI + real LangGraph + clearly labelled fixed Coding fixture.
-- Bedrock adapter, AWS diagnostics, AWS CLI installed; Mumbai ap-south-1.
-- Tavily adapter + graph node + citations; verified with mocked provider only.
-- Fresh audit: 31 backend tests pass; web typecheck and production export pass.
+## Completed this pass
+Audited both checkouts, running services, environment presence without showing secrets,
+Cursor's new startup script, Search summary behavior, frontend and demo notes.
+Replaced promotional dark UI with neutral light workspace, compact navigation,
+focused composer, result-first layout and a separate activity panel on desktop.
+Kept upload, citations, history, code highlighting/copy and existing API contracts.
+Removed external font request and decorative noise. Search badge says Enabled:
+configuration is not proof of a successful live request.
 
-## In progress (file ownership)
-- Codex document worker: `services/api/app/agents/document.py`, `tests/test_document.py` only.
-- Coordinator: inspection, handoff, then shared API/graph integration after Cursor idle.
+## Verified
+- Full backend suite: 71 passed (one existing dependency deprecation warning).
+- Final frontend typecheck and production build passed, including the result-first layout.
+- Browser: Coding fixture; sample PDF budget INR 180,000 cited page 2;
+  Research four-step workflow; mobile menu and history selection.
+- Desktop 1440px and mobile 390px checks, no horizontal overflow observed.
+- Browser error/warning log empty during this pass.
 
-## NOW / NEXT / LATER
-NOW: safe checkpoint, restore services, local PDF/TXT evidence retrieval with page citations.
-NEXT: integrate document upload, refine routing, improve workspace/messages/sources, demo checks.
-LATER: bounded Research over Search, live provider verification, deployment and presentation.
+## Files changed in this pass
+`apps/web/app/page.tsx`, `apps/web/app/globals.css`, this file, `docs/STATUS.md`.
+Pre-edit frontend copies saved under workspace `work/frontend-before-refinement-*`.
+No backend, credentials, startup settings, or deployment resources changed.
+Combined older Cursor/Codex changes are still uncommitted; authorship cannot be
+reconstructed precisely from one shared dirty tree. Do not attribute all changes to one tool.
 
-## Known bugs / external blockers
-- Previously reported Next dev hydration warning; not yet reproduced in this audit.
-- No active 3000/8000 listeners at initial inspection; restart required.
-- AWS credentials unavailable. Model inference not verified. Do not mark Bedrock connected.
-- Live Tavily not verified; inspect key presence without displaying secrets.
-- No Docker/SAM/deployment verification. No local model runtime detected.
+## Commands
+From MVP root: `../nexusai/.venv/Scripts/python.exe -m pytest services/api/tests -q`.
+From apps/web: `npm.cmd run typecheck`, `npm.cmd run build`.
+API: `../nexusai/.venv/Scripts/python.exe scripts/start_api.py`.
+Frontend: `npm.cmd run dev -- --hostname 127.0.0.1 --port 3000`.
 
-## Architecture decisions / do not break
-Next static export -> FastAPI -> LangGraph. Preserve Cursor Search work and API contracts.
-Coding never executes generated code. No secret logging or commits. Backend `.env` ignored.
-Document MVP will use honest local lexical retrieval/excerpts, not claim embeddings or AI synthesis.
-Document tokens must isolate uploaded content. No silent fixture fallback after real provider failure.
-
-## Commands/tests run this audit
-`git status --short`, `git log -5`, file and diff inspection; `pytest -q` (31 passed);
-`npm run typecheck` and `npm run build` (passed); `python -m app.check_bedrock`
-(expected missing credentials). Installed pypdf/python-multipart; locks pending.
-
-## Exact next action
-Confirm Cursor idle, checkpoint its changes, wire document module into schema/API/graph;
-start local services and inspect browser hydration before UI polish.
+## Remaining / exact next action
+Review current frontend with user, then checkpoint the combined repository safely.
+Resolve dependency lock drift before clean-machine setup: pypdf and multipart are
+used by the app but previous lock files need checking. Do not assume a clean install
+works merely because the shared venv passes tests.
+Bedrock test approval remains pending. Deployment is user-owned for now.
+Documents use process memory and are disabled in the Lambda template.
+Local work stops when the PC sleeps. No background/cloud execution is established.

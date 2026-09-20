@@ -1,4 +1,5 @@
 from urllib.parse import urlparse
+import re
 
 import httpx
 
@@ -28,21 +29,37 @@ def _citations(results: list) -> list[dict]:
         if not url:
             continue
         title = str(item.get('title') or '').strip() or url
-        citations.append({'id': f's{index}', 'title': title, 'url': url})
+        excerpt = str(item.get('content') or '').strip()[:1200]
+        citations.append({'id': f's{index}', 'title': title, 'url': url, 'excerpt': excerpt})
         if len(citations) >= MAX_RESULTS:
             break
     return citations
 
 
 def _answer(query: str, payload: dict, citations: list[dict], snippets: list[str]) -> str:
-    generated = payload.get('answer')
-    lead = generated.strip() if isinstance(generated, str) and generated.strip() else ''
+    def escape(text: str) -> str:
+        return re.sub(r'([\\`\[\]()])', r'\\\1', text.replace('\n', ' '))
     if not citations:
         return 'No web sources were returned for this query. Try a more specific search.'
-    lines = [lead or f'Search results for: {query}', '']
+    generated = payload.get('answer')
+    lead = generated.strip() if isinstance(generated, str) and generated.strip() else ''
+    lines = []
+    if lead:
+        lines.extend([
+            escape(lead),
+            '',
+            'Tavily summary from retrieved sources. Full pages have not been independently verified.',
+            '',
+        ])
+    else:
+        lines.extend([
+            f'Search evidence for: {escape(query)}',
+            'Retrieved snippets; full pages have not been independently verified.',
+            '',
+        ])
     for citation, snippet in zip(citations, snippets):
-        detail = f" — {snippet}" if snippet else ''
-        lines.append(f"- [{citation['title']}]({citation['url']}){detail}")
+        detail = f" — {escape(snippet)}" if snippet else ''
+        lines.append(f"- [{citation['id']}] {escape(citation['title'])}{detail}")
     lines.append('')
     lines.append('Citations are the URLs returned by Tavily. No extra sources were added.')
     return '\n'.join(lines)
@@ -56,7 +73,8 @@ class SearchProvider:
         key = self.settings.tavily_api_key.strip()
         if not key:
             raise ProviderError(
-                'Set TAVILY_API_KEY to enable the Search agent.',
+                'Search is not configured. Add TAVILY_API_KEY to services/api/.env '
+                '(backend only), then restart the API. Do not put the key in the frontend.',
                 'search_not_configured', 503,
             )
         try:

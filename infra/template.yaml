@@ -42,6 +42,7 @@ Resources:
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           ALLOWED_ORIGINS: !Ref FrontendOrigin
           DEMO_ACCESS_TOKEN: !Ref DemoAccessToken
+          DOCUMENT_ENABLED: 'false'
       Policies:
         - Statement:
             - Effect: Allow

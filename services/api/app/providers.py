@@ -54,7 +54,7 @@ class CodingProvider:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    def generate(self, message: str) -> str:
+    def generate(self, message: str, *, max_tokens: int = 1200) -> str:
         if self.settings.nexus_provider == 'demo':
             return DEMO_ANSWER
         if not self.settings.bedrock_model_id.strip():
@@ -69,7 +69,7 @@ class CodingProvider:
                 modelId=self.settings.bedrock_model_id,
                 system=[{'text': CODING_SYSTEM}],
                 messages=[{'role': 'user', 'content': [{'text': message}]}],
-                inferenceConfig={'maxTokens': 1200, 'temperature': 0.2},
+                inferenceConfig={'maxTokens': max_tokens, 'temperature': 0.2},
             )
             blocks = response.get('output', {}).get('message', {}).get('content', [])
             answer = '\n'.join(block['text'] for block in blocks if 'text' in block).strip()

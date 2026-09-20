@@ -1,89 +1,70 @@
-# NexusAI
+# ADDA AI
 
-One workspace for specialized AI tasks. Fresh hackathon repository; target demo:
-**September 20, 2026 at 20:00 IST**.
+A multi-agent workspace with visible routing, document evidence and a bounded Research workflow.
 
-## First milestone
+## What works now
 
-The implemented path is **Next.js → FastAPI → LangGraph router → Coding agent → answer + activity trace**.
-The default offline provider returns an explicitly labelled fixed fixture. Bedrock
-Converse is integrated, but live inference requires your account credentials and an
-accessible model. A successful health check does not prove Bedrock access.
+| Capability | Implemented behavior | Verification |
+| --- | --- | --- |
+| Workspace | Task history for the current page session, upload, citation cards, code highlighting/copy and completed activity | Local browser, types and production build checked |
+| Coding | LangGraph route to a labeled fixed fixture, or configured Bedrock Converse | Fixture verified; real Bedrock inference pending |
+| Documents | PDF/TXT upload, local keyword retrieval and page-cited excerpts | Local API tests and browser flow verified |
+| Research | LangGraph plan → two evidence checks → cited extractive brief | Attached-document workflow verified locally |
+| Search | Tavily adapter with bounded results, optional Tavily summary, and real source URLs | Live Search verified on the canonical local API when `TAVILY_API_KEY` is set |
+| AWS | SAM API/Lambda and Amplify configuration prepared | Not deployed; Docker/SAM path unverified |
 
-| Capability | Current state |
-| --- | --- |
-| Web workspace, request/error handling, response display | Implemented |
-| LangGraph routing + Coding node | Implemented; deterministic keyword routing |
-| Activity trace | Actual completed steps returned with the answer; no live streaming yet |
-| Offline provider | Fixed connection-test fixture, not AI |
-| Bedrock provider | Integrated; needs live account verification |
-| PDF upload, vector retrieval, page citations | Planned; not implemented |
-| Search API, Research workflow | Planned; not implemented |
-| AWS hosting | SAM + Amplify configuration supplied; not deployed |
+The `/login/` and `/register/` pages are frontend previews. There is no account service or protected workspace yet; the forms do not send or save credentials.
 
-Future agents return `501 agent_not_implemented` instead of simulated answers.
-Coding responses are displayed, never executed. Requests are independent; there is
-no conversation memory, user account system, or persistent storage in this milestone.
+Documents and document Research work without an API key. They use real source text, **not embeddings or language-model synthesis**. Default Coding mode is `demo`: its answer is a fixed connection-test fixture, not generated code. Live provider errors never silently fall back to that fixture.
 
-## Run locally on Windows
+[PROJECT_STATUS.md](PROJECT_STATUS.md) is the current handoff source of truth. See [verification scope](docs/STATUS.md), the [local demo guide](DEMO_GUIDE.md) and [pitch](PITCH.md).
 
-Prerequisites: Node.js 22+ and Python 3.13+ (this workstation has Node 24 and Python 3.14).
-Open this repository in Cursor. From its root, install dependencies:
+## Run locally
+
+Use Node.js 22+ and Python 3.13+. From this repository root on Windows:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r services/api/requirements-dev.txt
-Copy-Item services/api/.env.example services/api/.env
-Copy-Item apps/web/.env.example apps/web/.env.local
+if (!(Test-Path services/api/.env)) { Copy-Item services/api/.env.example services/api/.env }
+if (!(Test-Path apps/web/.env.local)) { Copy-Item apps/web/.env.example apps/web/.env.local }
 Push-Location apps/web
 npm.cmd ci
 Pop-Location
 ```
 
-Copy environment templates only for the first setup; do not overwrite configured files.
-Dependencies and templates have already been installed on the originating workstation.
-
-Terminal 1, from repository root:
+Start the API in one terminal:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir services/api --host 127.0.0.1 --port 8000 --reload
+.\.venv\Scripts\python.exe scripts\start_api.py
 ```
 
-Terminal 2:
+Start the frontend in another:
 
 ```powershell
 cd apps/web
-npm.cmd run dev
+npm.cmd run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open [NexusAI](http://localhost:3000) and run “Write a Python function to reverse a string.”
-You should see the fixed sample, the provider label, and completed Router/Coding steps.
-API reference: [local OpenAPI docs](http://localhost:8000/docs).
+Open [ADDA AI](http://127.0.0.1:3000). Follow [DEMO_GUIDE.md](DEMO_GUIDE.md). API schema: [local OpenAPI](http://127.0.0.1:8000/docs).
 
-Alternatively, `docker compose up --build` starts both services in offline fixture
-mode once Docker is installed. That path does not use your host AWS credentials.
-Docker and the cloud template require separate verification; they were not run on
-the originating workstation because Docker/AWS SAM were unavailable.
+On macOS/Linux use `.venv/bin/python`, `cp` and `npm` equivalents. `docker compose up --build` is a prepared alternative, but its build/run has not been verified and it does not inherit host AWS credentials automatically.
 
-On macOS/Linux use `.venv/bin/python` in place of `.venv\Scripts\python.exe`,
-`cp` instead of `Copy-Item`, and `npm` instead of `npm.cmd`.
+## Configuration and limits
 
-## Enable Bedrock
+Backend `.env` controls `NEXUS_PROVIDER`, `DOCUMENT_ENABLED`, `AWS_REGION`, `BEDROCK_MODEL_ID`, `TAVILY_API_KEY`, `ALLOWED_ORIGINS` and optional local `DEMO_ACCESS_TOKEN`. The frontend only needs `NEXT_PUBLIC_API_BASE_URL`. Never put AWS/provider secrets in public frontend variables.
 
-Follow [local AWS sign-in and verification](docs/AWS_SETUP.md). The readiness checker
-can validate the session without model calls, then test two prompts with `--invoke`.
+Uploads accept PDF or UTF-8 TXT up to 5 MB, with PDFs capped at 30 pages. Extracted text and PDF decompression are additionally bounded. Documents live in one API process for up to one hour, at most ten documents, and disappear on restart. Each document requires its separate secret token for retrieval and deletion. There is no durable storage or multi-instance document support. Browser task history is memory-only; prompts are independent, not a conversation-memory system.
 
-Configure AWS credentials using your team's normal AWS profile/SSO flow outside the
-repository. Set `NEXUS_PROVIDER=bedrock`, `AWS_REGION`, and `BEDROCK_MODEL_ID` in
-`services/api/.env`; restart the API. Use a Converse-compatible model or inference
-profile available to this account and region. Do not put AWS keys in the frontend.
-If using a named profile, set `AWS_PROFILE` in the backend terminal before starting it.
+The supplied Lambda template sets `DOCUMENT_ENABLED=false` because this document store is not safe across separate Lambda instances. A full cloud document demo needs shared durable storage first. S3/vector environment placeholders are unused. No vector database, embeddings, OCR or generated-code execution is implemented.
 
-The UI reports the configured provider. A successful chat is the live inference check.
-Provider failures remain errors; there is no silent fallback to the offline fixture.
-See [deployment instructions](docs/DEPLOYMENT.md) before enabling a public endpoint.
+## Live services
 
-## Verify
+Follow [AWS setup](docs/AWS_SETUP.md). AWS CLI is installed on the originating workstation and the named profile `nexusai` has passed STS identity verification; the default profile is not signed in. This does not prove Bedrock inference. The configured model still needs a real invocation check. Set `AWS_PROFILE=nexusai` in the backend terminal when using that profile, then select `NEXUS_PROVIDER=bedrock` only after verification.
+
+`TAVILY_API_KEY` enables Search and web Research. Put it only in `services/api/.env`, then restart the API. Do not put it in `apps/web/.env.local`. On the canonical pair (`127.0.0.1:3000` → `127.0.0.1:8000`) Search is live when `/health` reports `capabilities.search: true`. Search asks Tavily for at most five basic results plus a provider summary, and lists only HTTP(S) URLs Tavily returned. It does not independently read or verify full source pages. Health reports configuration/capabilities, while each chat response labels its actual provider (`demo`, `bedrock`, `extractive` or `tavily`). Health alone never proves Bedrock access.
+
+## Verify and hand off
 
 ```powershell
 Push-Location services/api
@@ -95,32 +76,12 @@ npm.cmd run build
 Pop-Location
 ```
 
-The backend tests cover the actual compiled graph, request validation, unsupported
-agents, CORS, the demo access gate, and the Bedrock adapter with a mocked SDK.
-They do not call paid services. `requirements.txt` pins runtime dependencies;
-`requirements-dev.txt` pins the complete test environment. The `.in` files document
-dependency intent, and `package-lock.json` locks the frontend.
+Backend tests exercise graph routing, document parsing/isolation/limits, Research and provider errors; external calls are mocked. The latest verified scope is in [docs/STATUS.md](docs/STATUS.md).
 
-## Repo map and team handoff
+- `apps/web/`: Next.js static frontend.
+- `services/api/app/`: FastAPI, LangGraph, specialist modules and sample PDF.
+- `services/api/tests/`: backend tests.
+- `infra/template.yaml`, `amplify.yml`: prepared AWS deployment configuration.
+- [Architecture](docs/ARCHITECTURE.md), [four-person task plan](docs/TASK_PLAN.md), [deployment runbook](docs/DEPLOYMENT.md).
 
-```text
-apps/web/              Next.js workspace, static export for Amplify
-services/api/app/     FastAPI, LangGraph, schemas, Bedrock/offline providers
-services/api/tests/   API and provider contract checks
-infra/template.yaml  AWS SAM: HTTP API, Lambda, private future document bucket
-docs/                Architecture, four-person plan, Cursor prompts, AWS runbook
-amplify.yml          Monorepo frontend build configuration
-```
-
-- [Four-person task plan and acceptance criteria](docs/TASK_PLAN.md)
-- [MVP architecture and planned agent interfaces](docs/ARCHITECTURE.md)
-- [Cursor/Codex handoff prompts](docs/CURSOR_HANDOFF.md)
-- [AWS deployment and access checks](docs/DEPLOYMENT.md)
-
-Keep the first route green before integrating Search, Document/RAG, then Research.
-This milestone uses separate web and API runtimes; agents are modules inside the API,
-not independently deployed microservices. A separate RAG service is a later option.
-
-Implementation references: [LangGraph graph API](https://docs.langchain.com/oss/python/langgraph/graph-api),
-[Bedrock Converse](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html),
-[Next.js installation](https://nextjs.org/docs/app/getting-started/installation).
+Two application runtimes, web and API; agents remain modules inside the API. No fine-tuning, Kubernetes or Redis.

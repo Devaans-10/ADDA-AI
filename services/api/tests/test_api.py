@@ -29,11 +29,16 @@ def test_rejects_invalid_messages(client, message):
     assert client.post('/api/chat', json={'message': message}).status_code == 422
 
 
-@pytest.mark.parametrize('message', ['Summarize this PDF', 'Research battery storage'])
-def test_future_agents_are_not_fake_success(client, message):
-    result = client.post('/api/chat', json={'message': message})
-    assert result.status_code == 501
-    assert result.json()['detail']['code'] == 'agent_not_implemented'
+def test_document_requires_upload(client):
+    result = client.post('/api/chat', json={'message': 'Summarize this PDF'})
+    assert result.status_code == 422
+    assert result.json()['detail']['code'] == 'document_required'
+
+
+def test_web_research_requires_search_access(client):
+    result = client.post('/api/chat', json={'message': 'Research battery storage'})
+    assert result.status_code == 503
+    assert result.json()['detail']['code'] == 'search_not_configured'
 
 
 def test_search_without_key_is_not_fake_success(client):
@@ -127,5 +132,5 @@ def test_health_does_not_invoke_model(monkeypatch):
     result = client.get('/health')
     assert result.status_code == 200
     assert result.json()['provider'] == 'bedrock'
-    assert result.json()['capabilities']['document'] is False
+    assert result.json()['capabilities']['document'] is True
     assert result.json()['capabilities']['search'] is False

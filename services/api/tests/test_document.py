@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from pypdf import PdfWriter
 
-from app.agents.document import DocumentStore, MAX_BYTES
+from app.agents.document import DocumentStore, MAX_BYTES, MAX_STREAM_BYTES
 from app.providers import ProviderError
 
 
@@ -140,4 +140,54 @@ def test_untrusted_markdown_is_escaped_in_answer():
     result = ask(store, upload, 'battery')
     assert r'\[link\]' in result['answer']
     assert result['citations'][0]['excerpt'].startswith('Click [link]')
+
+
+def test_concise_exact_sentence_preserves_page_provenance():
+    store = DocumentStore()
+    target = 'The battery installation budget is 1200 dollars.'
+    page = 'General background information. ' * 10 + target + ' Further background discussion.' * 10
+    upload = store.ingest(pdf_bytes('An unrelated introduction.', page), 'budget.pdf')
+    result = ask(store, upload, 'What is the battery installation budget?')
+    assert result['citations'][0]['excerpt'] == target
+    assert result['citations'][0]['page'] == 2
+
+
+def test_long_sentence_window_and_summary_are_exact_bounded_substrings():
+    store = DocumentStore()
+    source = 'background ' * 45 + 'battery budget 1200 dollars ' + 'additional ' * 35
+    upload = store.ingest(source.encode(), 'long.txt')
+    for query in ('battery budget', 'summarize'):
+        excerpt = ask(store, upload, query)['citations'][0]['excerpt']
+        assert len(excerpt) <= 500
+        assert excerpt in source
+        if query == 'battery budget':
+            assert 'battery budget 1200 dollars' in excerpt
+
+
+def test_weak_secondary_page_match_is_filtered():
+    store = DocumentStore()
+    upload = store.ingest(pdf_bytes('Battery installation budget is 1200 dollars.', 'A general budget overview.'), 'notes.pdf')
+    result = ask(store, upload, 'battery installation budget')
+    assert [c['page'] for c in result['citations']] == [1]
+
+
+@pytest.mark.parametrize('compressed', [True, False], ids=['compressed', 'declared-length'])
+def test_pdf_stream_resource_limit_before_text_extraction(compressed, monkeypatch):
+    from pypdf.generic import DecodedStreamObject, NameObject
+    from pypdf._page import PageObject
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=100, height=100)
+    stream = DecodedStreamObject()
+    stream.set_data(b' ' * (MAX_STREAM_BYTES + 1))
+    page[NameObject('/Contents')] = writer._add_object(stream.flate_encode() if compressed else stream)
+    data = BytesIO()
+    writer.write(data)
+    assert len(data.getvalue()) < MAX_BYTES
+    def extraction_must_not_run(*args, **kwargs):
+        pytest.fail('Oversized stream reached text extraction')
+    monkeypatch.setattr(PageObject, 'extract_text', extraction_must_not_run)
+    with pytest.raises(ProviderError) as failure:
+        DocumentStore().ingest(data.getvalue(), 'large-stream.pdf')
+    assert failure.value.code == 'document_resource_limit'
+    assert failure.value.status == 413
 

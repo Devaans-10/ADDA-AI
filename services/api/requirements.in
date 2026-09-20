@@ -1,4 +1,7 @@
 httpx>=0.28,<1
+fastapi>=0.115,<1
+pypdf>=6,<7
+python-multipart>=0.0.20,<1
 uvicorn>=0.34,<1
 langgraph>=1,<2
 boto3[crt]>=1.40,<2

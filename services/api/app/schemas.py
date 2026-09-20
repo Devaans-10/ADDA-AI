@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
     message: str = Field(min_length=1, max_length=12000)
     agent: Agent = 'auto'
+    document_id: str | None = Field(default=None, max_length=100)
 
     @field_validator('message')
     @classmethod
@@ -31,12 +32,13 @@ class Citation(BaseModel):
     url: str | None = None
     page: int | None = None
     document_id: str | None = None
+    excerpt: str | None = None
 
 
 class ChatResponse(BaseModel):
     request_id: str
     agent: str
     answer: str
-    provider: Literal['demo', 'bedrock']
+    provider: Literal['demo', 'bedrock', 'extractive', 'tavily']
     activity: list[Activity]
     citations: list[Citation] = Field(default_factory=list)

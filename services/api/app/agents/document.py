@@ -12,7 +12,8 @@ import secrets
 import threading
 import time
 
-from pypdf import PdfReader
+from pypdf import PdfReader, apply_configuration
+from pypdf.errors import LimitReachedError
 
 from app.providers import ProviderError
 
@@ -20,12 +21,40 @@ MAX_BYTES = 5 * 1024 * 1024
 MAX_PAGES = 30
 MAX_CHARACTERS = 200_000
 MAX_CHUNKS = 300
+MAX_STREAM_BYTES = 2 * 1024 * 1024
+MAX_EXCERPT_CHARACTERS = 500
 STOPWORDS = set('a an and are as at be by can could did do does for from give how i in is it me of on or please tell that the their this to was were what when where which who why with would you your document pdf file uploaded according about'.split())
 
 
 def _terms(text: str) -> Counter:
     return Counter(word for word in re.findall(r'\w+', text.lower())
                    if len(word) > 1 and word not in STOPWORDS)
+
+
+def _excerpt(text: str, query_terms: Counter, summary: bool) -> str:
+    """Return one exact source substring; never join noncontiguous evidence."""
+    selected = text
+    if not summary:
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        selected = max(sentences, key=lambda sentence: len(set(_terms(sentence)) & set(query_terms)))
+    if len(selected) <= MAX_EXCERPT_CHARACTERS:
+        return selected
+    start = 0
+    if not summary:
+        match = next((m for m in re.finditer(r'\w+', selected)
+                      if m.group().lower() in query_terms), None)
+        if match:
+            start = max(0, match.start() - 120)
+            if start:
+                boundary = selected.find(' ', start, match.start())
+                if boundary >= 0:
+                    start = boundary + 1
+    end = min(len(selected), start + MAX_EXCERPT_CHARACTERS)
+    if end < len(selected):
+        boundary = selected.rfind(' ', start + 250, end)
+        if boundary >= 0:
+            end = boundary
+    return selected[start:end]
 
 
 @dataclass(frozen=True)
@@ -50,6 +79,13 @@ class DocumentStore:
             if self._documents[key].expires <= now:
                 del self._documents[key]
 
+    @apply_configuration(
+        maximum_declared_stream_length=MAX_STREAM_BYTES,
+        array_based_stream_maximum_output_length=MAX_STREAM_BYTES,
+        zlib_maximum_output_length=MAX_STREAM_BYTES,
+        lzw_maximum_output_length=MAX_STREAM_BYTES,
+        run_length_maximum_output_length=MAX_STREAM_BYTES,
+    )
     def ingest(self, data: bytes, filename: str) -> dict:
         if not data or len(data) > MAX_BYTES:
             raise ProviderError('Upload a nonempty file no larger than 5 MB.', 'document_size', 413)
@@ -78,6 +114,9 @@ class DocumentStore:
                 pages = []
                 total = 0
                 for page in reader.pages:
+                    content = page.get_contents()
+                    if content is not None and len(content.get_data()) > MAX_STREAM_BYTES:
+                        raise ProviderError('PDF page content is too large. Export a smaller text-based PDF.', 'document_resource_limit', 413)
                     text = page.extract_text() or ''
                     total += len(text)
                     if total > MAX_CHARACTERS:
@@ -85,6 +124,8 @@ class DocumentStore:
                     pages.append(text)
             except ProviderError:
                 raise
+            except LimitReachedError as exc:
+                raise ProviderError('PDF processing exceeded the safe resource limit. Export a smaller text-based PDF.', 'document_resource_limit', 413) from exc
             except Exception as exc:
                 raise ProviderError('This PDF could not be read. Export a fresh text-based PDF.', 'document_invalid', 422) from exc
         if sum(map(len, pages)) > MAX_CHARACTERS:
@@ -142,7 +183,9 @@ class DocumentStore:
                         for word in query_terms if counts[word])
             if score:
                 ranked.append((score, index))
-        indices = [i for _, i in sorted(ranked, key=lambda item: (-item[0], item[1]))[:3]]
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        best_score = ranked[0][0] if ranked else 0
+        indices = [i for score, i in ranked if score >= best_score * 0.5][:3]
         if summary:
             # Representative excerpts, not a generated abstract or completeness claim.
             indices = []
@@ -160,7 +203,8 @@ class DocumentStore:
         blocks = ['**Document evidence — local keyword retrieval, no language model.**',
                   'Representative page excerpts (not a generated summary):' if summary else 'These matching excerpts may help answer your question; they are not a synthesized answer:']
         for number, index in enumerate(indices, 1):
-            page, excerpt = document.chunks[index]
+            page, text = document.chunks[index]
+            excerpt = _excerpt(text, query_terms, summary)
             cite_id = f'D{number}'
             citations.append({'id': cite_id, 'title': document.filename, 'page': page,
                               'document_id': document_id, 'excerpt': excerpt})

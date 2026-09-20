@@ -1,51 +1,51 @@
-# First milestone verification
+## Professional workspace refinement — latest Codex pass
 
-Verified locally on September 19, 2026 on Windows, Node 24.18.0 and Python 3.14.
+- Audited Cursor changes in the active MVP copy before editing. Preserved the startup script, configured Search key, optional Tavily summary and all backend contracts.
+- Replaced dark promotional layout with a neutral light workspace, smaller navigation, focused composer, result-first hierarchy and contextual activity panel. Removed remote font loading.
+- Verified Coding fixture, PDF budget/page 2, four-step document Research, mobile navigation and history selection in the browser. Browser error/warning log empty. Desktop/mobile overflow checks passed.
+- Backend suite: 71 passed. Final frontend typecheck and production build passed.
+- No new live Search or Bedrock call in this pass. Earlier Cursor live Search verification remains historical evidence. Deployment remains user-owned and unverified.
 
-- Backend: 16 tests passed. Includes real LangGraph invocation in fixture mode,
-  validation, unsupported agents, CORS, access token and mocked Bedrock success/failure/timeout.
-- Python dependency consistency: passed. Runtime and test dependencies locked.
-- Frontend: TypeScript check and production static export passed. npm audit reported
-  no vulnerabilities at installation time.
-- Browser: actual request from `http://localhost:3000` to local API succeeded, displayed
-  fixture disclosure, code, request ID, and Router/Coding activity. Network failure
-  and unimplemented Document routing errors were checked. Working fixture restored.
-- Layout visually checked in Codex's narrow browser panel; desktop layout has not had
-  a separate visual check.
-- Test dependency emitted one Starlette/AnyIO deprecation warning; tests passed.
+# Verification scope — September 20, 2026
 
-Not verified: real Bedrock inference, Docker builds, SAM validation/container build,
-Python 3.13 deployment runtime, AWS deployment, and GitHub CI. No AWS profile or
-credentials were available via the local SDK credential chain. No cloud resources
-were created. The repository has no remote configured.
+## Frontend redesign (20 Sep 2026, ~15:00 IST)
 
-PDF/RAG, Search, Research, and live activity streaming are planned rather than implemented.
-The next gate is local AWS sign-in and two successful distinct Bedrock Coding prompts.
+Redesigned `apps/web` in `outputs/nexusai-mvp` as a dark multi-agent workspace. Backend contracts were not changed. No new npm/Python dependencies. `.env` files were not modified.
 
-## Bedrock setup follow-up
+- Typecheck passed. Production `next build` passed (static `/`).
+- Browser on `http://127.0.0.1:3000` → API `http://127.0.0.1:8000`: Coding fixture (labelled demo, not Bedrock), live Search with 5 real Tavily HTTPS cards, sample PDF budget Q&A (INR 180,000 / page 2), TXT upload Q&A (page 1), Research plan → collect → brief (4 citations), activity timeline, 5 sequential history items, code-block copy fallback, loading/error, 654px and 1440×900 layouts. No horizontal overflow. No Next.js error overlay.
+- Still blocked for claims: live Bedrock, AWS deployment.
 
-User selected Mumbai (`ap-south-1`); backend defaults and local configuration now use
-that region. Added a safe local readiness command, specific AWS error messages, and
-the CRT dependency required by the SDK's browser-login credential provider. Backend
-suite now has 24 passing tests; dependency consistency check passed. Live inference
-is still unverified. AWS CLI installation was started through the official winget
-package and is awaiting completion of the Windows installer prompt.
+## Canonical local demo (20 Sep 2026, ~14:20 IST)
 
-## Cursor audit re-verification (19 Sep 2026, ~17:50 IST)
+Stabilized `outputs/nexusai-mvp` onto **UI `http://127.0.0.1:3000` → API `http://127.0.0.1:8000`**. See [DEMO_GUIDE.md](../DEMO_GUIDE.md).
 
-Independent inspection of this tree (not the disposable handoff-test repo).
-HEAD `1ff16f1` on `main`, working tree clean, no git remote.
+- Stale listeners on 3002 and 8000–8008 (including the Search-disabled 8001 process) were stopped.
+- `/health` on 8000: `provider: demo`, `document: true`, `search: true`.
+- Browser judge flow on 3000: Coding fixture, live Search with five HTTPS source cards, sample PDF budget Q&A (INR 180,000 / page 2), attached-document Research, activity panel, five-item session history. API traffic used only `127.0.0.1:8000`.
+- Backend: 71 passed. Frontend typecheck and production build passed.
+- Still blocked for claims: live Bedrock, AWS deployment. Split checkouts remain unconsolidated.
 
-Verified now:
-- `pytest -q` in `services/api`: 24 passed, 1 Starlette/AnyIO deprecation warning.
-- `npm run typecheck` and `npm run build` in `apps/web`: passed (Next.js 16.3.5 static export).
-- Live `GET http://127.0.0.1:8000/health`: `coding: true`, document/search/research `false`, `provider: demo`.
-- Live `POST /api/chat` coding prompt: 200, fixture answer, `agent: coding`, activity Router + Coding agent.
-- Live PDF/search/research keyword prompts: HTTP 501 `agent_not_implemented`.
-- Browser `http://localhost:3000`: API connected, Run task shows fixture, Coding agent label, activity steps.
-- AWS CLI present: `aws-cli/2.36.49`. Docker and AWS SAM CLIs are not installed.
-- `apps/web/.env.local` is missing; frontend used the documented `http://localhost:8000` default.
+[PROJECT_STATUS.md](../PROJECT_STATUS.md) is the current execution handoff. This file summarizes evidence and limitations without preserving an obsolete conversation log.
 
-Not verified: live Bedrock inference, Docker compose, SAM/Amplify deploy, GitHub CI.
-Observed in Next.js dev: hydration error overlay (`app/page.tsx` Workspace, red "1 Issue" badge).
-The chat path still completed. Production `out/` was not re-served in a browser.
+## NOW — verified locally
+
+- Core backend suite: 71 tests passed.
+- Frontend type check and production static build passed.
+- Browser document and attached-document Research flows completed; no console errors were observed in those checks.
+- Coding fixture, document retrieval/page citations and bounded Research are implemented. Live service adapters are tested with mocked providers.
+- AWS CLI is installed. Named profile `nexusai` passed STS identity verification; the default profile is not signed in.
+
+Document behavior is lexical/extractive, without embeddings or AI synthesis. Research organizes two evidence checks and cited excerpts. Search is live on the canonical API when `/health` reports `search: true`.
+
+## NEXT — externally unverified
+
+- Bedrock live inference: unverified. Do not copy credentials into documentation or infer model access from STS.
+- Docker build/run, AWS SAM validation/build, Lambda runtime and Amplify hosting: unverified. No deployment has occurred and no Git remote is configured.
+- Full cloud document support: not implemented. The Lambda template disables documents because the current store is process-local.
+
+Work is isolated on `codex/hackathon-mvp` in `outputs/nexusai-mvp` while the coordinator preserves and consolidates the original repository's Cursor edits. Do not run simultaneous edits in both copies or assume consolidation is complete.
+
+## LATER
+
+Durable storage, embeddings/vector retrieval, OCR, streaming activity, persistent task history and asynchronous expanded Research. None should be presented as current functionality.

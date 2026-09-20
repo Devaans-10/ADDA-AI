@@ -11,9 +11,10 @@ class Settings(BaseSettings):
     nexus_provider: Literal['demo', 'bedrock'] = 'demo'
     aws_region: str = 'ap-south-1'
     bedrock_model_id: str = ''
-    allowed_origins: str = 'http://localhost:3000'
+    allowed_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
     demo_access_token: str = ''
     tavily_api_key: str = ''
+    document_enabled: bool = True
 
     @property
     def origins(self) -> list[str]:
